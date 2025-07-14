@@ -8,7 +8,7 @@ const Terminal = () => {
     ''
   ]);
   const [currentPath, setCurrentPath] = useState('/home/aneesh');
-
+  
   const terminalStyle = {
     backgroundColor: '#000000',
     color: '#00ff00',
@@ -62,7 +62,7 @@ const Terminal = () => {
 
   const processCommand = (command) => {
     const [cmd, ...args] = command.split(' ');
-    
+
     switch (cmd.toLowerCase()) {
       case 'help':
         return [
@@ -201,8 +201,8 @@ const Terminal = () => {
       if (path === '..') {
         setCurrentPath('/home/aneesh');
       } else {
-        const newPath = path.startsWith('/') ? path : `/home/aneesh/${path}`;
-        setCurrentPath(newPath);
+      const newPath = path.startsWith('/') ? path : `/home/aneesh/${path}`;
+      setCurrentPath(newPath);
       }
       return [''];
     } else {
@@ -811,7 +811,7 @@ const Terminal = () => {
         ];
 
       case 'certifications.txt':
-        return [
+      return [
           'Professional Certifications',
           '============================',
           '',
@@ -846,7 +846,7 @@ const Terminal = () => {
         ];
 
       case 'courses.txt':
-        return [
+      return [
           'Online Courses & Continuous Learning',
           '=====================================',
           '',
