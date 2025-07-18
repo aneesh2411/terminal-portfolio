@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 const Terminal = () => {
   const [input, setInput] = useState('');
@@ -8,6 +8,9 @@ const Terminal = () => {
     ''
   ]);
   const [currentPath, setCurrentPath] = useState('/home/aneesh');
+  const [history, setHistory] = useState([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const outputRef = useRef(null);
   
   const terminalStyle = {
     backgroundColor: '#000000',
@@ -15,9 +18,15 @@ const Terminal = () => {
     fontFamily: 'Monaco, Consolas, "Courier New", monospace',
     height: '100vh',
     width: '100vw',
-    padding: '16px',
+    padding: '8px', // Reduced from 16px for better flush
     overflow: 'hidden'
   };
+
+  useEffect(() => {
+    if (outputRef.current) {
+      outputRef.current.scrollTop = outputRef.current.scrollHeight;
+    }
+  }, [output]);
 
   const handleInputChange = (e) => {
     setInput(e.target.value);
@@ -27,19 +36,34 @@ const Terminal = () => {
     if (e.key === 'Enter') {
       const command = input.trim();
       if (command) {
-        // Add command to output
         const newOutput = [...output, `${getPrompt()} ${command}`];
-        
-        // Process command
         const result = processCommand(command);
         newOutput.push(...result);
-        
         setOutput(newOutput);
+        setHistory(prev => [...prev, command]);
+        setHistoryIndex(-1);
       }
       setInput('');
     } else if (e.key === 'Tab') {
       e.preventDefault();
       handleAutoComplete();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (historyIndex < history.length - 1) {
+        const newIndex = historyIndex + 1;
+        setHistoryIndex(newIndex);
+        setInput(history[history.length - 1 - newIndex]);
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (historyIndex > 0) {
+        const newIndex = historyIndex - 1;
+        setHistoryIndex(newIndex);
+        setInput(history[history.length - 1 - newIndex]);
+      } else if (historyIndex === 0) {
+        setHistoryIndex(-1);
+        setInput('');
+      }
     }
   };
 
@@ -49,14 +73,51 @@ const Terminal = () => {
   };
 
   const handleAutoComplete = () => {
-    const [cmd] = input.split(' ');
+    const parts = input.trim().split(' ');
+    const cmd = parts[0];
+    const arg = parts[1] || '';
+
     const commands = ['help', 'ls', 'cd', 'cat', 'pwd', 'whoami', 'clear', 'history', 'git', 'ps', 'curl', 'date', 'echo'];
-    const matches = commands.filter(c => c.startsWith(cmd));
-    if (matches.length === 1) {
-      setInput(matches[0] + ' ');
-    } else if (matches.length > 1) {
-      const newOutput = [...output, matches.join('  ')];
-      setOutput(newOutput);
+
+    if (parts.length === 1) {
+      // Autocomplete command
+      const matches = commands.filter(c => c.startsWith(cmd));
+      if (matches.length === 1) {
+        setInput(matches[0] + ' ');
+      } else if (matches.length > 1) {
+        setOutput(prev => [...prev, matches.join('  ')]);
+      }
+    } else if (parts.length === 2 && (cmd === 'cd' || cmd === 'ls' || cmd === 'cat')) {
+      // Autocomplete path or file
+      const files = getFilesForPath(currentPath);
+      const matches = files.filter(f => f.startsWith(arg));
+      if (matches.length === 1) {
+        setInput(`${cmd} ${matches[0]}`);
+      } else if (matches.length > 1) {
+        setOutput(prev => [...prev, matches.join('  ')]);
+      }
+    }
+  };
+
+  const getFilesForPath = (path) => {
+    switch (path) {
+      case '/home/aneesh':
+      case '~':
+        return ['about.txt', 'projects/', 'experience/', 'skills/', 'education/', 'contact.txt'];
+      case '/home/aneesh/projects':
+      case 'projects':
+        return ['second-brain-ai.txt', 'ai-mock-interview.txt', 'chatbot-platform.txt', 'data-pipeline.txt', 'portfolio-terminal.txt', 'web-scraper.txt'];
+      case '/home/aneesh/experience':
+      case 'experience':
+        return ['keenfox-2024.txt', 'thinksimple-2024.txt', 'velocified-2023.txt', 'wipro-2021.txt', 'freelance-projects.txt'];
+      case '/home/aneesh/skills':
+      case 'skills':
+        return ['programming.txt', 'frameworks.txt', 'databases.txt', 'cloud-platforms.txt', 'ai-ml.txt', 'tools.txt'];
+      case '/home/aneesh/education':
+      case 'education':
+        return ['arizona-state.txt', 'certifications.txt', 'courses.txt'];
+      default:
+        return [];
     }
   };
 
@@ -160,14 +221,14 @@ const Terminal = () => {
       ];
     } else if (currentDir === 'projects' || currentDir === '/home/aneesh/projects') {
       return [
-        'second-brain-ai/    ai-mock-interview/  chatbot-platform/',
-        'data-pipeline/      portfolio-terminal/ web-scraper/',
+        'second-brain-ai.txt    ai-mock-interview.txt  chatbot-platform.txt',
+        'data-pipeline.txt      portfolio-terminal.txt web-scraper.txt',
         ''
       ];
     } else if (currentDir === 'experience' || currentDir === '/home/aneesh/experience') {
       return [
-        'keenfox-2024/       thinksimple-2024/   velocified-2023/',
-        'wipro-2021/         freelance-projects/',
+        'keenfox-2024.txt       thinksimple-2024.txt   velocified-2023.txt',
+        'wipro-2021.txt         freelance-projects.txt',
         ''
       ];
     } else if (currentDir === 'skills' || currentDir === '/home/aneesh/skills') {
@@ -192,17 +253,19 @@ const Terminal = () => {
       return [''];
     }
     
+    const normalizedPath = path.replace(/\/$/, '');
+    
     const validPaths = [
       '/home/aneesh', '~', 'projects', 'experience', 'education', 'skills',
       '/home/aneesh/projects', '/home/aneesh/experience', '/home/aneesh/education', '/home/aneesh/skills'
     ];
     
-    if (validPaths.includes(path) || path === '..') {
-      if (path === '..') {
+    if (validPaths.includes(normalizedPath) || normalizedPath === '..') {
+      if (normalizedPath === '..') {
         setCurrentPath('/home/aneesh');
       } else {
-      const newPath = path.startsWith('/') ? path : `/home/aneesh/${path}`;
-      setCurrentPath(newPath);
+        const newPath = normalizedPath.startsWith('/') ? normalizedPath : `/home/aneesh/${normalizedPath}`;
+        setCurrentPath(newPath);
       }
       return [''];
     } else {
@@ -215,7 +278,13 @@ const Terminal = () => {
       return ['cat: missing file operand'];
     }
     
-    switch (file) {
+    // Normalize file name by adding .txt if missing
+    let normalizedFile = file;
+    if (!normalizedFile.endsWith('.txt')) {
+      normalizedFile += '.txt';
+    }
+    
+    switch (normalizedFile) {
       case 'about.txt':
         return [
           '=====================================',
@@ -955,7 +1024,10 @@ const Terminal = () => {
     <div style={terminalStyle}>
       <div style={{height: '100%', display: 'flex', flexDirection: 'column'}}>
         {/* Terminal Output */}
-        <div style={{flex: 1, marginBottom: '16px', overflowY: 'auto'}}>
+        <div 
+          ref={outputRef}
+          style={{flex: 1, marginBottom: '16px', overflowY: 'auto'}}
+        >
           {output.map((line, index) => (
             <div key={index} style={{marginBottom: '2px', color: line.includes('Command not found') ? '#ff4444' : '#00ff00'}}>
               {line}

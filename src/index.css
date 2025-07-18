@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Full-screen setup */
+html, body, #root, .App {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
 /* Terminal specific styles */
 @layer base {
   body {
@@ -40,6 +49,17 @@
   
   .terminal-scrollable {
     @apply overflow-y-auto scrollbar-thin scrollbar-thumb-terminal-dark-green scrollbar-track-terminal-bg;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .terminal-container {
+    @apply p-2 text-sm;
+  }
+  
+  .terminal-input {
+    @apply text-base; /* Prevent iOS zoom */
   }
 }
 
